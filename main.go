@@ -31,7 +31,7 @@ import (
 
 func main() {
 	ctx := context.Background()
-	ctx, cancel := signal.NotifyContext(ctx, syscall.SIGINT)
+	ctx, cancel := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 	cmd.ExecuteContext(ctx)
 }

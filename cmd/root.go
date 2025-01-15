@@ -24,9 +24,10 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 
-	"github.com/akatranlp/go-concurrently/pkg/cmd"
+	"github.com/akatranlp/go-concurrently/internal/cmd"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
@@ -40,24 +41,45 @@ var rootCmd = &cobra.Command{
 	Short:   "go-concurrently CLI " + "v0.1.0",
 	Version: "v0.1.0",
 	Args:    cobra.ArbitraryArgs,
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) == 0 {
-			viper.Set("commands", []string{"echo 'Hello World!'"})
-		} else {
-			viper.Set("commands", args)
+	PreRunE: func(_ *cobra.Command, args []string) error {
+		if len(args) > 0 {
+			runCfgs := make([]cmd.RunCommandConfig, len(args))
+			for i, arg := range args {
+				runCfgs[i] = cmd.RunCommandConfig{
+					Command: arg,
+				}
+			}
+			viper.Set("commands", runCfgs)
+			viper.Set("runAfter", make(map[string]interface{}, 0))
+			viper.Set("runBefore", make(map[string]interface{}, 0))
 		}
 		return nil
 	},
 	SilenceUsage: true,
 	RunE: func(ccmd *cobra.Command, args []string) error {
+		cfg, err := cmd.ParseConfig()
+		if err != nil {
+			return err
+		}
+		log.Printf("%+v", cfg)
+
 		ctx := ccmd.Context()
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		raw := viper.GetBool("raw")
-		killOthers := viper.GetBool("killOthers")
+		for _, command := range cfg.RunBefore.Commands {
+			if command.Raw == nil {
+				command.Raw = &cfg.RunBefore.Raw
+			}
+			sh := cmd.NewCommand(ctx, 0, command.RunCommandConfig)
+			if err := sh.Run(nil); err != nil {
+				return err
+			}
+		}
 
-		commands := viper.GetStringSlice("commands")
+		// Concurrently run all commands
+
+		killOthers := viper.GetBool("killOthers")
 
 		var wg *errgroup.Group
 		if killOthers {
@@ -65,21 +87,36 @@ var rootCmd = &cobra.Command{
 		} else {
 			wg = new(errgroup.Group)
 		}
-		wg.SetLimit(len(commands))
+		wg.SetLimit(len(cfg.Commands))
 
-		for i, command := range commands {
-			sh := cmd.NewCommand(ctx, command, i)
+		for i, command := range cfg.Commands {
+			if command.Raw == nil {
+				command.Raw = &cfg.Raw
+			}
+			sh := cmd.NewCommand(ctx, i, command)
 			wg.Go(func() error {
 				defer func() {
 					if killOthers {
 						cancel()
 					}
 				}()
-				return sh.Run(raw, nil)
+				return sh.Run(nil)
 			})
 		}
 
-		return wg.Wait()
+		err = wg.Wait()
+
+		for _, command := range cfg.RunAfter.Commands {
+			if command.Raw == nil {
+				command.Raw = &cfg.RunAfter.Raw
+			}
+			sh := cmd.NewCommand(context.Background(), 0, command.RunCommandConfig)
+			if err := sh.Run(nil); err != nil {
+				return err
+			}
+		}
+
+		return err
 	},
 }
 
@@ -87,7 +124,7 @@ var rootCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func ExecuteContext(ctx context.Context) {
 	err := rootCmd.ExecuteContext(ctx)
-	fmt.Println("exiting...")
+	fmt.Println(err, "exiting...")
 	if err != nil {
 		os.Exit(1)
 	}
