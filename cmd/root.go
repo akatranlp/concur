@@ -23,14 +23,14 @@ package cmd
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"log"
 	"os"
+	"sync"
 
 	"github.com/akatranlp/concur/internal/cmd"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"golang.org/x/sync/errgroup"
 )
 
 var cfgFile string
@@ -77,17 +77,21 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		log.Printf("%+v", cfg)
+
+		if cfg.Debug {
+			// log.Printf("%+v", cfg)
+			log.Printf("%v", cfg)
+		}
 
 		ctx := ccmd.Context()
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		for _, command := range cfg.RunBefore.Commands {
+		for i, command := range cfg.RunBefore.Commands {
 			if command.Raw == nil {
 				command.Raw = &cfg.RunBefore.Raw
 			}
-			sh := cmd.NewCommand(ctx, 0, command.RunCommandConfig)
+			sh := cmd.NewCommand(ctx, i, cfg.PrefixType, command.RunCommandConfig)
 			if err := sh.Run(nil); err != nil {
 				return err
 			}
@@ -95,38 +99,40 @@ var rootCmd = &cobra.Command{
 
 		// Concurrently run all commands
 
-		killOthers := viper.GetBool("killOthers")
+		killOthers := cfg.KillOthers
+		killOthersOnFail := cfg.KillOthersOnFail
 
-		var wg *errgroup.Group
-		if killOthers {
-			wg, ctx = errgroup.WithContext(ctx)
-		} else {
-			wg = new(errgroup.Group)
-		}
-		wg.SetLimit(len(cfg.Commands))
+		var wg sync.WaitGroup
+		wg.Add(len(cfg.Commands))
+		errCh := make(chan error, len(cfg.Commands))
 
 		for i, command := range cfg.Commands {
 			if command.Raw == nil {
 				command.Raw = &cfg.Raw
 			}
-			sh := cmd.NewCommand(ctx, i, command)
-			wg.Go(func() error {
-				defer func() {
-					if killOthers {
-						cancel()
-					}
-				}()
-				return sh.Run(nil)
-			})
+			sh := cmd.NewCommand(ctx, i, cfg.PrefixType, command)
+
+			go func(cmd *cmd.Command) {
+				defer wg.Done()
+				err := cmd.Run(nil)
+				if killOthers || (err != nil && killOthersOnFail) {
+					cancel()
+				}
+				errCh <- err
+			}(sh)
 		}
 
-		err = wg.Wait()
+		wg.Wait()
+		close(errCh)
+		for errV := range errCh {
+			err = errors.Join(err, errV)
+		}
 
-		for _, command := range cfg.RunAfter.Commands {
+		for i, command := range cfg.RunAfter.Commands {
 			if command.Raw == nil {
 				command.Raw = &cfg.RunAfter.Raw
 			}
-			sh := cmd.NewCommand(context.Background(), 0, command.RunCommandConfig)
+			sh := cmd.NewCommand(context.Background(), i, cfg.PrefixType, command.RunCommandConfig)
 			if err := sh.Run(nil); err != nil {
 				return err
 			}
@@ -140,7 +146,6 @@ var rootCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func ExecuteContext(ctx context.Context) {
 	err := rootCmd.ExecuteContext(ctx)
-	fmt.Println(err, "exiting...")
 	if err != nil {
 		os.Exit(1)
 	}
@@ -158,6 +163,12 @@ func init() {
 	rootCmd.Flags().BoolP("raw", "r", false, "Raw mode (send output of each command directly)")
 	viper.BindPFlag("raw", rootCmd.Flags().Lookup("raw"))
 
-	rootCmd.Flags().BoolP("killOthers", "k", false, "Kill all other commands if one fails")
-	viper.BindPFlag("killOthers", rootCmd.Flags().Lookup("killOthers"))
+	rootCmd.Flags().Bool("debug", false, "Debug mode")
+	viper.BindPFlag("debug", rootCmd.Flags().Lookup("debug"))
+
+	rootCmd.Flags().BoolP("kill-others", "k", false, "Kill all other commands if one exists")
+	viper.BindPFlag("killOthers", rootCmd.Flags().Lookup("kill-others"))
+
+	rootCmd.Flags().Bool("kill-others-on-fail", false, "Kill all other commands if one fails")
+	viper.BindPFlag("killOthersOnFail", rootCmd.Flags().Lookup("kill-others-on-fail"))
 }

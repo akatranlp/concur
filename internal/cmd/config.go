@@ -60,11 +60,14 @@ var defaultRunAfterConfig = RunAfterConfig{
 }
 
 type Config struct {
-	Raw        bool `mapstructure:"raw"`
-	KillOthers bool `mapstructure:"killOthers"`
-	Commands   []RunCommandConfig
-	RunBefore  RunBeforeConfig
-	RunAfter   RunAfterConfig
+	Raw              bool       `mapstructure:"raw"`
+	KillOthers       bool       `mapstructure:"killOthers"`
+	KillOthersOnFail bool       `mapstructure:"killOthersOnFail"`
+	Debug            bool       `mapstructure:"debug"`
+	PrefixType       prefixType `mapstructure:"prefixType"`
+	Commands         []RunCommandConfig
+	RunBefore        RunBeforeConfig
+	RunAfter         RunAfterConfig
 }
 
 func ParseConfig() (*Config, error) {
