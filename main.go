@@ -26,7 +26,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/akatranlp/go-concurrently/cmd"
+	"github.com/akatranlp/concur/cmd"
 )
 
 func main() {

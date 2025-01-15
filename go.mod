@@ -1,4 +1,4 @@
-module github.com/akatranlp/go-concurrently
+module github.com/akatranlp/concur
 
 go 1.23.0
 

@@ -27,7 +27,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/akatranlp/go-concurrently/internal/cmd"
+	"github.com/akatranlp/concur/internal/cmd"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
@@ -37,8 +37,8 @@ var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:     "go-concurrently",
-	Short:   "go-concurrently CLI " + "v0.1.0",
+	Use:     "concur",
+	Short:   "concur CLI " + "v0.1.0",
 	Version: "v0.1.0",
 	Args:    cobra.ArbitraryArgs,
 	PreRunE: func(_ *cobra.Command, args []string) error {
@@ -52,8 +52,24 @@ var rootCmd = &cobra.Command{
 			viper.Set("commands", runCfgs)
 			viper.Set("runAfter", make(map[string]interface{}, 0))
 			viper.Set("runBefore", make(map[string]interface{}, 0))
+			return nil
 		}
-		return nil
+
+		if cfgFile != "" {
+			viper.SetConfigFile(cfgFile)
+		} else {
+			cwd, err := os.Getwd()
+			cobra.CheckErr(err)
+
+			viper.AddConfigPath(cwd)
+			viper.SetConfigType("yaml")
+			viper.SetConfigName(".concur")
+		}
+
+		// let us see
+		// viper.AutomaticEnv() // read in environment variables that match
+
+		return viper.ReadInConfig()
 	},
 	SilenceUsage: true,
 	RunE: func(ccmd *cobra.Command, args []string) error {
@@ -131,13 +147,11 @@ func ExecuteContext(ctx context.Context) {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
-
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.go-concurrently.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is ./.concur.yaml)")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
@@ -146,29 +160,4 @@ func init() {
 
 	rootCmd.Flags().BoolP("killOthers", "k", false, "Kill all other commands if one fails")
 	viper.BindPFlag("killOthers", rootCmd.Flags().Lookup("killOthers"))
-
-	rootCmd.Flags().StringP("beforeCommand", "b", "", "Command to run before all other commands")
-	viper.BindPFlag("beforeCommand", rootCmd.Flags().Lookup("beforeCommand"))
-
-	rootCmd.Flags().StringP("afterCommand", "a", "", "Command to run after all other commands")
-	viper.BindPFlag("afterCommand", rootCmd.Flags().Lookup("afterCommand"))
-}
-
-// initConfig reads in config file and ENV variables if set.
-func initConfig() {
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
-	} else {
-		home, err := os.UserHomeDir()
-		cobra.CheckErr(err)
-
-		viper.AddConfigPath(home)
-		viper.SetConfigType("yaml")
-		viper.SetConfigName(".go-concurrently")
-	}
-
-	// let us see
-	// viper.AutomaticEnv() // read in environment variables that match
-
-	_ = viper.ReadInConfig()
 }
