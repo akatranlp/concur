@@ -48,6 +48,11 @@
       "description": "The format of the timestamp in go time package notation.",
       "default": "15:04:05.000"
     },
+    "timeSinceStart": {
+      "type": "boolean",
+      "description": "Whether to show the time since the start of the process.",
+      "default": false
+    },
     "commands": {
       "type": "array",
       "items": {

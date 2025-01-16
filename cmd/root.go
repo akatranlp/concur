@@ -138,7 +138,7 @@ var rootCmd = &cobra.Command{
 			if command.Raw == nil {
 				command.Raw = &cfg.RunBefore.Raw
 			}
-			prefix, err := cmd.NewPrefix(cfg.Prefix, cfg.PrefixLength, cfg.TimestampFormat)
+			prefix, err := cmd.NewPrefix(cfg.Prefix, cfg.PrefixLength, cfg.TimestampFormat, cfg.TimeSinceStart)
 			if err != nil {
 				panic("unreachable")
 			}
@@ -159,7 +159,7 @@ var rootCmd = &cobra.Command{
 			if command.Raw == nil {
 				command.Raw = &cfg.Raw
 			}
-			prefix, err := cmd.NewPrefix(cfg.Prefix, cfg.PrefixLength, cfg.TimestampFormat)
+			prefix, err := cmd.NewPrefix(cfg.Prefix, cfg.PrefixLength, cfg.TimestampFormat, cfg.TimeSinceStart)
 			if err != nil {
 				panic("unreachable")
 			}
@@ -204,7 +204,7 @@ var rootCmd = &cobra.Command{
 			if command.Raw == nil {
 				command.Raw = &cfg.RunAfter.Raw
 			}
-			prefix, err := cmd.NewPrefix(cfg.Prefix, cfg.PrefixLength, cfg.TimestampFormat)
+			prefix, err := cmd.NewPrefix(cfg.Prefix, cfg.PrefixLength, cfg.TimestampFormat, cfg.TimeSinceStart)
 			if err != nil {
 				panic("unreachable")
 			}
@@ -261,6 +261,9 @@ func init() {
 
 	rootCmd.Flags().StringP("timestamp-format", "t", "15:04:05.000", "Timestamp format in notation of Go time package")
 	viper.BindPFlag("timestampFormat", rootCmd.Flags().Lookup("timestamp-format"))
+
+	rootCmd.Flags().Bool("time-since-start", false, "Show time since start")
+	viper.BindPFlag("timeSinceStart", rootCmd.Flags().Lookup("time-since-start"))
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.

@@ -8,6 +8,7 @@ prefix: name # default: ""
 padPrefix: true
 prefixLength: 10
 timestampFormat: "15:04:05.000"
+timeSinceStart: true
 commands: # required will be run concurrently
   - command: "echo 'Hello, World!'" # required
     name: "" # optional
