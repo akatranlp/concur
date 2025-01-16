@@ -35,7 +35,6 @@ import (
 
 var commandNames []string
 var cfgFile string
-var cfgErr error
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -44,9 +43,21 @@ var rootCmd = &cobra.Command{
 	Version: "v0.1.0",
 	Args:    cobra.ArbitraryArgs,
 	PreRunE: func(_ *cobra.Command, args []string) error {
-		if len(args) == 0 || cfgErr != nil {
-			return cfgErr
+		if len(args) == 0 {
+			if cfgFile != "" {
+				viper.SetConfigFile(cfgFile)
+			} else {
+				cwd, err := os.Getwd()
+				cobra.CheckErr(err)
+
+				viper.AddConfigPath(cwd)
+				viper.SetConfigType("yaml")
+				viper.SetConfigName(".concur")
+			}
+
+			return viper.ReadInConfig()
 		}
+
 		runCfgs := make([]cmd.RunCommandConfig, len(args))
 		for i, arg := range args {
 			runCfgs[i] = cmd.RunCommandConfig{
@@ -160,7 +171,6 @@ func ExecuteContext(ctx context.Context) {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
@@ -168,6 +178,9 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is ./.concur.yaml)")
 
 	rootCmd.Flags().StringArrayVarP(&commandNames, "command-names", "n", nil, "Command names")
+
+	rootCmd.Flags().StringP("prefix", "p", "", "Prefix Type (values: index, name, command, pid, time, TEMPLATE)\n  template Values: {{.Name | .Index | .Command | .Pid | .Time}}")
+	viper.BindPFlag("prefix", rootCmd.Flags().Lookup("prefix"))
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
@@ -182,19 +195,4 @@ func init() {
 
 	rootCmd.Flags().Bool("kill-others-on-fail", false, "Kill all other commands if one fails")
 	viper.BindPFlag("killOthersOnFail", rootCmd.Flags().Lookup("kill-others-on-fail"))
-}
-
-func initConfig() {
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
-	} else {
-		cwd, err := os.Getwd()
-		cobra.CheckErr(err)
-
-		viper.AddConfigPath(cwd)
-		viper.SetConfigType("yaml")
-		viper.SetConfigName(".concur")
-	}
-
-	cfgErr = viper.ReadInConfig()
 }

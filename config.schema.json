@@ -25,8 +25,7 @@
     "prefixType": {
       "type": "string",
       "description": "The type of prefix to use.",
-      "enum": ["", "pid", "name", "command", "idx"],
-      "default": "idx"
+      "default": "index"
     },
     "commands": {
       "type": "array",
