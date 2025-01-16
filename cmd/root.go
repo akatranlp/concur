@@ -34,6 +34,7 @@ import (
 )
 
 var cfgFile string
+var cfgErr error
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -42,34 +43,20 @@ var rootCmd = &cobra.Command{
 	Version: "v0.1.0",
 	Args:    cobra.ArbitraryArgs,
 	PreRunE: func(_ *cobra.Command, args []string) error {
-		if len(args) > 0 {
-			runCfgs := make([]cmd.RunCommandConfig, len(args))
-			for i, arg := range args {
-				runCfgs[i] = cmd.RunCommandConfig{
-					Command: arg,
-				}
+		if len(args) == 0 || cfgErr != nil {
+			return cfgErr
+		}
+		runCfgs := make([]cmd.RunCommandConfig, len(args))
+		for i, arg := range args {
+			runCfgs[i] = cmd.RunCommandConfig{
+				Command: arg,
 			}
-			viper.Set("commands", runCfgs)
-			viper.Set("runAfter", make(map[string]interface{}, 0))
-			viper.Set("runBefore", make(map[string]interface{}, 0))
-			return nil
 		}
 
-		if cfgFile != "" {
-			viper.SetConfigFile(cfgFile)
-		} else {
-			cwd, err := os.Getwd()
-			cobra.CheckErr(err)
-
-			viper.AddConfigPath(cwd)
-			viper.SetConfigType("yaml")
-			viper.SetConfigName(".concur")
-		}
-
-		// let us see
-		// viper.AutomaticEnv() // read in environment variables that match
-
-		return viper.ReadInConfig()
+		viper.Set("runafter", map[string]interface{}{"commands": []interface{}{}})
+		viper.Set("commands", runCfgs)
+		viper.Set("runbefore", map[string]interface{}{"commands": []interface{}{}})
+		return nil
 	},
 	SilenceUsage: true,
 	RunE: func(ccmd *cobra.Command, args []string) error {
@@ -79,8 +66,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		if cfg.Debug {
-			// log.Printf("%+v", cfg)
-			log.Printf("%v", cfg)
+			log.Printf("%+v", cfg)
 		}
 
 		ctx := ccmd.Context()
@@ -152,6 +138,7 @@ func ExecuteContext(ctx context.Context) {
 }
 
 func init() {
+	cobra.OnInitialize(initConfig)
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
@@ -171,4 +158,19 @@ func init() {
 
 	rootCmd.Flags().Bool("kill-others-on-fail", false, "Kill all other commands if one fails")
 	viper.BindPFlag("killOthersOnFail", rootCmd.Flags().Lookup("kill-others-on-fail"))
+}
+
+func initConfig() {
+	if cfgFile != "" {
+		viper.SetConfigFile(cfgFile)
+	} else {
+		cwd, err := os.Getwd()
+		cobra.CheckErr(err)
+
+		viper.AddConfigPath(cwd)
+		viper.SetConfigType("yaml")
+		viper.SetConfigName(".concur")
+	}
+
+	cfgErr = viper.ReadInConfig()
 }

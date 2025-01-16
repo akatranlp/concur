@@ -15,11 +15,20 @@ import (
 
 type prefixType string
 
+func (p prefixType) Validate() error {
+	switch p {
+	case PrefixIdx, PrefixPID, PrefixName, PrefixCommand, PreficTypeUnknown:
+		return nil
+	}
+	return fmt.Errorf("invalid prefix type: %s", p)
+}
+
 const (
-	PrefixIdx     prefixType = "idx"
-	PrefixPID     prefixType = "pid"
-	PrefixName    prefixType = "Name"
-	PrefixCommand prefixType = "command"
+	PreficTypeUnknown prefixType = ""
+	PrefixIdx         prefixType = "idx"
+	PrefixPID         prefixType = "pid"
+	PrefixName        prefixType = "Name"
+	PrefixCommand     prefixType = "command"
 )
 
 type Command struct {
@@ -98,7 +107,7 @@ func (c *Command) runWithPrefix(output io.Writer) error {
 			buf := scanner.Bytes()
 			buf = append(prefix, buf...)
 			buf = append(buf, '\n')
-			buf = append(buf, colorReset...)
+			buf = append(buf, "\033[0m"...)
 
 			_, err := output.Write(buf)
 			if c.cfg.Debug {
@@ -132,7 +141,11 @@ func (c *Command) getPrefix() []byte {
 	case PrefixPID:
 		prefix = fmt.Sprintf("[%d]", c.cmd.Process.Pid)
 	case PrefixName:
-		prefix = fmt.Sprintf("[%s]", c.cfg.Name)
+		if c.cfg.Name != "" {
+			prefix = fmt.Sprintf("[%s]", c.cfg.Name)
+		} else {
+			prefix = fmt.Sprintf("[%s]", c.cfg.Command)
+		}
 	case PrefixCommand:
 		prefix = fmt.Sprintf("[%s]", c.cfg.Command)
 	default:
@@ -143,5 +156,5 @@ func (c *Command) getPrefix() []byte {
 		}
 	}
 
-	return append([]byte(ColorizeString(c.cfg.PrefixColor, prefix)), ' ')
+	return append([]byte(c.cfg.PrefixColor.Apply(prefix)), ' ')
 }
