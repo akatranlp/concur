@@ -9,12 +9,14 @@ import (
 	"time"
 )
 
-const timeFormat = "15:04:05.000"
+var templateRegex = regexp.MustCompile(`\{\{.*\}\}`)
+var paddingRegex = regexp.MustCompile(`\{\{.*\.Padding.*\}\}`)
 
 type Prefix struct {
 	template         *template.Template
 	input            string
 	maxCommandLength int
+	timeFormat       string
 	Index            int
 	Name             string
 	Command          string
@@ -23,9 +25,8 @@ type Prefix struct {
 	Padding          string
 }
 
-var templateRegex = regexp.MustCompile(`\{\{.*\}\}`)
-
-func NewPrefix(input string, maxCommandLength int) (p Prefix, err error) {
+func NewPrefix(input string, maxCommandLength int, timeFormat string) (p Prefix, err error) {
+	p.timeFormat = timeFormat
 	p.maxCommandLength = maxCommandLength
 	p.input = input
 	switch input {
@@ -45,7 +46,7 @@ func (p Prefix) Apply(seq *Sequence) string {
 	var prefix string
 
 	if p.template != nil {
-		p.Time = time.Now().Format(timeFormat)
+		p.Time = time.Now().Format(p.timeFormat)
 		var buf strings.Builder
 		if err := p.template.Execute(&buf, p); err != nil {
 			panic(err)
@@ -80,7 +81,7 @@ func (p Prefix) Apply(seq *Sequence) string {
 		case "pid":
 			prefix = strconv.Itoa(p.Pid)
 		case "time":
-			prefix = time.Now().Format(timeFormat)
+			prefix = time.Now().Format(p.timeFormat)
 		default:
 			panic("unreachable")
 		}
@@ -93,8 +94,6 @@ func (p Prefix) Apply(seq *Sequence) string {
 	}
 	return seq.Apply(prefix) + " "
 }
-
-var paddingRegex = regexp.MustCompile(`\{\{.*\.Padding.*\}\}`)
 
 func ApplyEvenPadding(cmds ...*Command) {
 	var maxLength int

@@ -138,7 +138,7 @@ var rootCmd = &cobra.Command{
 			if command.Raw == nil {
 				command.Raw = &cfg.RunBefore.Raw
 			}
-			prefix, err := cmd.NewPrefix(cfg.Prefix, cfg.PrefixLength)
+			prefix, err := cmd.NewPrefix(cfg.Prefix, cfg.PrefixLength, cfg.TimestampFormat)
 			if err != nil {
 				panic("unreachable")
 			}
@@ -159,7 +159,7 @@ var rootCmd = &cobra.Command{
 			if command.Raw == nil {
 				command.Raw = &cfg.Raw
 			}
-			prefix, err := cmd.NewPrefix(cfg.Prefix, cfg.PrefixLength)
+			prefix, err := cmd.NewPrefix(cfg.Prefix, cfg.PrefixLength, cfg.TimestampFormat)
 			if err != nil {
 				panic("unreachable")
 			}
@@ -204,7 +204,7 @@ var rootCmd = &cobra.Command{
 			if command.Raw == nil {
 				command.Raw = &cfg.RunAfter.Raw
 			}
-			prefix, err := cmd.NewPrefix(cfg.Prefix, cfg.PrefixLength)
+			prefix, err := cmd.NewPrefix(cfg.Prefix, cfg.PrefixLength, cfg.TimestampFormat)
 			if err != nil {
 				panic("unreachable")
 			}
@@ -258,6 +258,9 @@ func init() {
 
 	rootCmd.Flags().Bool("pad-prefix", false, "Pad prefix to the longest prefix")
 	viper.BindPFlag("padPrefix", rootCmd.Flags().Lookup("pad-prefix"))
+
+	rootCmd.Flags().StringP("timestamp-format", "t", "15:04:05.000", "Timestamp format in notation of Go time package")
+	viper.BindPFlag("timestampFormat", rootCmd.Flags().Lookup("timestamp-format"))
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.

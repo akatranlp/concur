@@ -7,6 +7,7 @@ debug: false # default: false
 prefix: name # default: ""
 padPrefix: true
 prefixLength: 10
+timestampFormat: "15:04:05.000"
 commands: # required will be run concurrently
   - command: "echo 'Hello, World!'" # required
     name: "" # optional

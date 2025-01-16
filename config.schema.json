@@ -43,6 +43,11 @@
       "description": "The max Length of the prefix if the prefix is command.",
       "default": 10
     },
+    "timestampFormat": {
+      "type": "string",
+      "description": "The format of the timestamp in go time package notation.",
+      "default": "15:04:05.000"
+    },
     "commands": {
       "type": "array",
       "items": {
