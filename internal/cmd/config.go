@@ -92,10 +92,6 @@ func (c RunBeforeConfig) Validate() error {
 	return nil
 }
 
-var defaultRunBeforeConfig = RunBeforeConfig{
-	Raw: true,
-}
-
 type RunAfterCommandConfig struct {
 	RunCommandConfig `mapstructure:",squash"`
 	// Input            InputType  `mapstructure:"input"`
@@ -129,10 +125,6 @@ func (c RunAfterConfig) Validate() error {
 	return nil
 }
 
-var defaultRunAfterConfig = RunAfterConfig{
-	Raw: true,
-}
-
 type Config struct {
 	Raw              bool       `mapstructure:"raw"`
 	KillOthers       bool       `mapstructure:"killOthers"`
@@ -163,9 +155,10 @@ func (c Config) Validate() error {
 }
 
 func ParseConfig() (*Config, error) {
+	viper.SetDefault("runBefore.raw", true)
+	viper.SetDefault("runAfter.raw", true)
+
 	var cfg Config
-	cfg.RunBefore = defaultRunBeforeConfig
-	cfg.RunAfter = defaultRunAfterConfig
 	if err := viper.Unmarshal(&cfg,
 		viper.DecodeHook(mapstructure.TextUnmarshallerHookFunc()),
 	); err != nil {
