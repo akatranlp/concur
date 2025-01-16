@@ -24,7 +24,7 @@ package cmd
 import (
 	"context"
 	"errors"
-	"log"
+	"fmt"
 	"os"
 	"sync"
 
@@ -36,10 +36,32 @@ import (
 var commandNames []string
 var cfgFile string
 
+const long = `concur is a CLI tool to run multiple commands concurrently;
+It can be configured using a configuration file (default: ./.concur.yaml) or by passing commands as arguments.
+an example configuration file:
+
+` + "```yaml" + `
+commands:
+  - command: echo "hello"
+    name: hello
+  - command: echo "world"
+    name: world
+
+runBefore:
+  commands:
+    - command: echo "before"
+
+runAfter:
+  commands:
+    - command: echo "after"
+
+` + "```"
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:     "concur",
 	Short:   "concur CLI " + "v0.1.0",
+	Long:    long,
 	Version: "v0.1.0",
 	Args:    cobra.ArbitraryArgs,
 	PreRunE: func(_ *cobra.Command, args []string) error {
@@ -79,7 +101,8 @@ var rootCmd = &cobra.Command{
 		viper.Set("runbefore", map[string]interface{}{"commands": []interface{}{}})
 		return nil
 	},
-	SilenceUsage: true,
+	SilenceUsage:  true,
+	SilenceErrors: true,
 	RunE: func(ccmd *cobra.Command, args []string) error {
 		cfg, err := cmd.ParseConfig()
 		if err != nil {
@@ -87,13 +110,16 @@ var rootCmd = &cobra.Command{
 		}
 
 		if cfg.Debug {
-			log.Printf("%+v", cfg)
+			cfg.PrintDebug()
 		}
 
 		ctx := ccmd.Context()
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
+		if len(cfg.RunBefore.Commands) > 0 {
+			fmt.Println("\033[1m[RunBefore]\033[0m")
+		}
 		for i, command := range cfg.RunBefore.Commands {
 			if command.Raw == nil {
 				command.Raw = &cfg.RunBefore.Raw
@@ -108,6 +134,7 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
+		fmt.Println("\033[1m[Concurrently]\033[0m")
 		// Concurrently run all commands
 
 		killOthers := cfg.KillOthers
@@ -143,6 +170,10 @@ var rootCmd = &cobra.Command{
 			err = errors.Join(err, errV)
 		}
 
+		if len(cfg.RunAfter.Commands) > 0 {
+			fmt.Println("\033[1m[RunAfter]\033[0m")
+		}
+
 		for i, command := range cfg.RunAfter.Commands {
 			if command.Raw == nil {
 				command.Raw = &cfg.RunAfter.Raw
@@ -157,8 +188,17 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
-		return err
+		if cfg.Debug {
+			return err
+		}
+		return ErrNoPrint{}
 	},
+}
+
+type ErrNoPrint struct{}
+
+func (ErrNoPrint) Error() string {
+	return ""
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -166,6 +206,9 @@ var rootCmd = &cobra.Command{
 func ExecuteContext(ctx context.Context) {
 	err := rootCmd.ExecuteContext(ctx)
 	if err != nil {
+		if !errors.Is(err, ErrNoPrint{}) {
+			fmt.Println("Error:", err)
+		}
 		os.Exit(1)
 	}
 }

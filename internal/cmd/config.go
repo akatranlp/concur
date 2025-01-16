@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
@@ -152,6 +153,16 @@ func (c Config) Validate() error {
 		return err
 	}
 	return nil
+}
+
+func (c Config) PrintDebug() {
+	if c.Debug {
+		fmt.Println("Viper debug:")
+		viper.Debug()
+	}
+
+	fmt.Println("Config:")
+	fmt.Printf("%+v\n", c)
 }
 
 func ParseConfig() (*Config, error) {
