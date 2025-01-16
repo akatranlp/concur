@@ -127,12 +127,13 @@ func (c RunAfterConfig) Validate() error {
 }
 
 type Config struct {
-	Raw              bool   `mapstructure:"raw"`
-	KillOthers       bool   `mapstructure:"killOthers"`
-	KillOthersOnFail bool   `mapstructure:"killOthersOnFail"`
-	Debug            bool   `mapstructure:"debug"`
-	Prefix           string `mapstructure:"prefix"`
-	PadPrefix        bool   `mapstructure:"padPrefix"`
+	Raw              bool       `mapstructure:"raw"`
+	KillOthers       bool       `mapstructure:"killOthers"`
+	KillOthersOnFail bool       `mapstructure:"killOthersOnFail"`
+	KillSignal       KillSignal `mapstructure:"killSignal"`
+	Debug            bool       `mapstructure:"debug"`
+	Prefix           string     `mapstructure:"prefix"`
+	PadPrefix        bool       `mapstructure:"padPrefix"`
 	Commands         []RunCommandConfig
 	RunBefore        RunBeforeConfig
 	RunAfter         RunAfterConfig

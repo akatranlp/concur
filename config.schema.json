@@ -17,6 +17,12 @@
       "description": "Whether to kill other processes on failure.",
       "default": false
     },
+    "killSignal": {
+      "type": "string",
+      "description": "The signal to send to kill other processes.",
+      "enum": ["SIGTERM", "SIGINT", "SIGKILL", "sigterm", "sigint", "sigkill"],
+      "default": "SIGINT"
+    },
     "debug": {
       "type": "boolean",
       "description": "Whether to run in debug mode.",

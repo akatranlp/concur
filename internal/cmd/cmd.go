@@ -22,7 +22,7 @@ type Command struct {
 	w      *os.File
 }
 
-func NewCommand(ctx context.Context, idx int, prefix Prefix, cfg RunCommandConfig) *Command {
+func NewCommand(ctx context.Context, idx int, prefix Prefix, killSignal syscall.Signal, cfg RunCommandConfig) *Command {
 	var arg0, arg1 string
 	if runtime.GOOS == "windows" {
 		arg0, arg1 = "cmd", "/c"
@@ -37,7 +37,7 @@ func NewCommand(ctx context.Context, idx int, prefix Prefix, cfg RunCommandConfi
 			err = cmd.Process.Kill()
 		} else {
 			// Check which signal is the best to use SIGINT or SIGTERM or SIGKILL
-			err = cmd.Process.Signal(syscall.SIGINT)
+			err = cmd.Process.Signal(killSignal)
 		}
 		return err
 	}

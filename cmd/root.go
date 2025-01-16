@@ -142,7 +142,7 @@ var rootCmd = &cobra.Command{
 			if err != nil {
 				panic("unreachable")
 			}
-			sh := cmd.NewCommand(ctx, i, prefix, command.RunCommandConfig)
+			sh := cmd.NewCommand(ctx, i, prefix, cfg.KillSignal.Sys(), command.RunCommandConfig)
 			if err := sh.Run(nil); err != nil {
 				return err
 			}
@@ -163,7 +163,7 @@ var rootCmd = &cobra.Command{
 			if err != nil {
 				panic("unreachable")
 			}
-			sh := cmd.NewCommand(ctx, i, prefix, command)
+			sh := cmd.NewCommand(ctx, i, prefix, cfg.KillSignal.Sys(), command)
 			if err := sh.Start(); err != nil {
 				return err
 			}
@@ -208,7 +208,7 @@ var rootCmd = &cobra.Command{
 			if err != nil {
 				panic("unreachable")
 			}
-			sh := cmd.NewCommand(context.Background(), i, prefix, command.RunCommandConfig)
+			sh := cmd.NewCommand(context.Background(), i, prefix, cfg.KillSignal.Sys(), command.RunCommandConfig)
 			if err := sh.Run(nil); err != nil {
 				return err
 			}
@@ -269,4 +269,7 @@ func init() {
 
 	rootCmd.Flags().Bool("kill-others-on-fail", false, "Kill all other commands if one fails")
 	viper.BindPFlag("killOthersOnFail", rootCmd.Flags().Lookup("kill-others-on-fail"))
+
+	rootCmd.Flags().String("kill-signal", "SIGINT", "Signal to send to kill other commands")
+	viper.BindPFlag("killSignal", rootCmd.Flags().Lookup("kill-signal"))
 }

@@ -2,6 +2,7 @@
 raw: true # default: false
 killOthers: false # default: false
 killOthersOnFail: false # default: false
+killSignal: SIGTERM # default: SIGINT
 debug: false # default: false
 prefix: name # default: ""
 padPrefix: true
