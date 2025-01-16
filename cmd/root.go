@@ -33,6 +33,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+var commandNames []string
 var cfgFile string
 var cfgErr error
 
@@ -50,6 +51,15 @@ var rootCmd = &cobra.Command{
 		for i, arg := range args {
 			runCfgs[i] = cmd.RunCommandConfig{
 				Command: arg,
+			}
+		}
+
+		if len(commandNames) > 0 {
+			if len(commandNames) != len(runCfgs) {
+				return errors.New("number of command names must match number of commands")
+			}
+			for i, name := range commandNames {
+				runCfgs[i].Name = name
 			}
 		}
 
@@ -77,7 +87,11 @@ var rootCmd = &cobra.Command{
 			if command.Raw == nil {
 				command.Raw = &cfg.RunBefore.Raw
 			}
-			sh := cmd.NewCommand(ctx, i, cfg.PrefixType, command.RunCommandConfig)
+			prefix, err := cmd.NewPrefix(cfg.Prefix)
+			if err != nil {
+				panic("unreachable")
+			}
+			sh := cmd.NewCommand(ctx, i, prefix, command.RunCommandConfig)
 			if err := sh.Run(nil); err != nil {
 				return err
 			}
@@ -96,7 +110,11 @@ var rootCmd = &cobra.Command{
 			if command.Raw == nil {
 				command.Raw = &cfg.Raw
 			}
-			sh := cmd.NewCommand(ctx, i, cfg.PrefixType, command)
+			prefix, err := cmd.NewPrefix(cfg.Prefix)
+			if err != nil {
+				panic("unreachable")
+			}
+			sh := cmd.NewCommand(ctx, i, prefix, command)
 
 			go func(cmd *cmd.Command) {
 				defer wg.Done()
@@ -118,7 +136,11 @@ var rootCmd = &cobra.Command{
 			if command.Raw == nil {
 				command.Raw = &cfg.RunAfter.Raw
 			}
-			sh := cmd.NewCommand(context.Background(), i, cfg.PrefixType, command.RunCommandConfig)
+			prefix, err := cmd.NewPrefix(cfg.Prefix)
+			if err != nil {
+				panic("unreachable")
+			}
+			sh := cmd.NewCommand(context.Background(), i, prefix, command.RunCommandConfig)
 			if err := sh.Run(nil); err != nil {
 				return err
 			}
@@ -144,6 +166,8 @@ func init() {
 	// will be global for your application.
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is ./.concur.yaml)")
+
+	rootCmd.Flags().StringArrayVarP(&commandNames, "command-names", "n", nil, "Command names")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.

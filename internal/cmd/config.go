@@ -126,18 +126,18 @@ func (c RunAfterConfig) Validate() error {
 }
 
 type Config struct {
-	Raw              bool       `mapstructure:"raw"`
-	KillOthers       bool       `mapstructure:"killOthers"`
-	KillOthersOnFail bool       `mapstructure:"killOthersOnFail"`
-	Debug            bool       `mapstructure:"debug"`
-	PrefixType       prefixType `mapstructure:"prefixType"`
+	Raw              bool   `mapstructure:"raw"`
+	KillOthers       bool   `mapstructure:"killOthers"`
+	KillOthersOnFail bool   `mapstructure:"killOthersOnFail"`
+	Debug            bool   `mapstructure:"debug"`
+	Prefix           string `mapstructure:"prefix"`
 	Commands         []RunCommandConfig
 	RunBefore        RunBeforeConfig
 	RunAfter         RunAfterConfig
 }
 
 func (c Config) Validate() error {
-	if err := c.PrefixType.Validate(); err != nil {
+	if _, err := NewPrefix(c.Prefix); err != nil {
 		return err
 	}
 	for _, command := range c.Commands {
