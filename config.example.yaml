@@ -3,7 +3,8 @@ raw: true # default: false
 killOthers: false # default: false
 killOthersOnFail: false # default: false
 debug: false # default: false
-prefixType: name # default: ""
+prefix: name # default: ""
+padPrefix: true
 commands: # required will be run concurrently
   - command: "echo 'Hello, World!'" # required
     name: "" # optional

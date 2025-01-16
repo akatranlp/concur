@@ -22,10 +22,15 @@
       "description": "Whether to run in debug mode.",
       "default": false
     },
-    "prefixType": {
+    "prefix": {
       "type": "string",
       "description": "The type of prefix to use.",
       "default": "index"
+    },
+    "padPrefix": {
+      "type": "boolean",
+      "description": "If the prefix should be padded.",
+      "default": true
     },
     "commands": {
       "type": "array",

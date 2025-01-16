@@ -34,6 +34,7 @@ import (
 )
 
 var commandNames []string
+var prefixColors []string
 var cfgFile string
 
 const long = `concur is a CLI tool to run multiple commands concurrently;
@@ -96,6 +97,19 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
+		if len(prefixColors) > 0 {
+			if len(prefixColors) != len(runCfgs) {
+				return errors.New("number of prefix colors must match number of commands")
+			}
+			for i, color := range prefixColors {
+				var c cmd.Color
+				if err := c.Set(color); err != nil {
+					return err
+				}
+				runCfgs[i].PrefixColor = cmd.Sequence{Color: c}
+			}
+		}
+
 		viper.Set("runafter", map[string]interface{}{"commands": []interface{}{}})
 		viper.Set("commands", runCfgs)
 		viper.Set("runbefore", map[string]interface{}{"commands": []interface{}{}})
@@ -140,10 +154,7 @@ var rootCmd = &cobra.Command{
 		killOthers := cfg.KillOthers
 		killOthersOnFail := cfg.KillOthersOnFail
 
-		var wg sync.WaitGroup
-		wg.Add(len(cfg.Commands))
-		errCh := make(chan error, len(cfg.Commands))
-
+		startedCommands := make([]*cmd.Command, len(cfg.Commands))
 		for i, command := range cfg.Commands {
 			if command.Raw == nil {
 				command.Raw = &cfg.Raw
@@ -153,10 +164,25 @@ var rootCmd = &cobra.Command{
 				panic("unreachable")
 			}
 			sh := cmd.NewCommand(ctx, i, prefix, command)
+			if err := sh.Start(); err != nil {
+				return err
+			}
 
+			startedCommands[i] = sh
+		}
+
+		if cfg.PadPrefix {
+			cmd.ApplyEvenPadding(startedCommands...)
+		}
+
+		var wg sync.WaitGroup
+		wg.Add(len(cfg.Commands))
+		errCh := make(chan error, len(cfg.Commands))
+
+		for _, sh := range startedCommands {
 			go func(cmd *cmd.Command) {
 				defer wg.Done()
-				err := cmd.Run(nil)
+				err := cmd.Wait(nil)
 				if killOthers || (err != nil && killOthersOnFail) {
 					cancel()
 				}
@@ -220,10 +246,15 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is ./.concur.yaml)")
 
-	rootCmd.Flags().StringArrayVarP(&commandNames, "command-names", "n", nil, "Command names")
+	rootCmd.Flags().StringArrayVarP(&commandNames, "names", "n", nil, "Command names")
+
+	rootCmd.Flags().StringArrayVarP(&prefixColors, "prefix-colors", "c", nil, "Prefix Colors")
 
 	rootCmd.Flags().StringP("prefix", "p", "", "Prefix Type (values: index, name, command, pid, time, TEMPLATE)\n  template Values: {{.Name | .Index | .Command | .Pid | .Time}}")
 	viper.BindPFlag("prefix", rootCmd.Flags().Lookup("prefix"))
+
+	rootCmd.Flags().Bool("pad-prefix", false, "Pad prefix to the longest prefix")
+	viper.BindPFlag("padPrefix", rootCmd.Flags().Lookup("pad-prefix"))
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.

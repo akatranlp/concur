@@ -16,7 +16,7 @@ type RunCommandConfig struct {
 	Command     string   `mapstructure:"command"`
 	Name        string   `mapstructure:"name"`
 	Raw         *bool    `mapstructure:"raw"`
-	PrefixColor sequence `mapstructure:",squash"`
+	PrefixColor Sequence `mapstructure:",squash"`
 	CWD         string   `mapstructure:"cwd"`
 	Debug       bool     `mapstructure:"debug"`
 }
@@ -132,6 +132,7 @@ type Config struct {
 	KillOthersOnFail bool   `mapstructure:"killOthersOnFail"`
 	Debug            bool   `mapstructure:"debug"`
 	Prefix           string `mapstructure:"prefix"`
+	PadPrefix        bool   `mapstructure:"padPrefix"`
 	Commands         []RunCommandConfig
 	RunBefore        RunBeforeConfig
 	RunAfter         RunAfterConfig

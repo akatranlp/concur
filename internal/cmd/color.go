@@ -25,15 +25,15 @@ var colorMap = map[string]string{
 	"HiWhite":   "97",
 }
 
-type color struct {
+type Color struct {
 	segments string
 }
 
-func (c color) Validate() error {
+func (c Color) Validate() error {
 	return nil
 }
 
-func (c *color) SetString(s string) error {
+func (c *Color) SetString(s string) error {
 	if v, err := strconv.Atoi(s); err == nil {
 		return c.SetInt(v)
 	}
@@ -54,7 +54,7 @@ func (c *color) SetString(s string) error {
 	return nil
 }
 
-func (c *color) SetInt(i int) error {
+func (c *Color) SetInt(i int) error {
 	if i < 0 || i > 255 {
 		return fmt.Errorf("invalid color: %d", i)
 	}
@@ -62,7 +62,7 @@ func (c *color) SetInt(i int) error {
 	return nil
 }
 
-func (c *color) setHex(s string) error {
+func (c *Color) setHex(s string) error {
 	if len(s) != 7 {
 		return fmt.Errorf("invalid hex color: %s", s)
 	}
@@ -85,32 +85,32 @@ func (c *color) setHex(s string) error {
 }
 
 // Satisfy the flag package  Value interface.
-func (c *color) Set(s string) error {
+func (c *Color) Set(s string) error {
 	return c.SetString(s)
 }
 
 // Satisfy the pflag package Value interface.
-func (c *color) Type() string { return "color" }
+func (c *Color) Type() string { return "color" }
 
 // Satisfy the encoding.TextUnmarshaler interface.
-func (c *color) UnmarshalText(text []byte) error {
+func (c *Color) UnmarshalText(text []byte) error {
 	return c.Set(string(text))
 }
 
 // Satisfy the flag package Getter interface.
-func (c *color) Get() interface{} { return color(*c) }
+func (c *Color) Get() interface{} { return Color(*c) }
 
-type sequence struct {
-	Color     color
+type Sequence struct {
+	Color     Color
 	Bold      bool
 	Underline bool
 }
 
-func (c sequence) Validate() error {
+func (c Sequence) Validate() error {
 	return c.Color.Validate()
 }
 
-func (c sequence) Apply(str string) string {
+func (c Sequence) Apply(str string) string {
 	sequence := c.Color.segments
 	if c.Bold {
 		sequence += ";1"
