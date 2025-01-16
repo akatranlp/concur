@@ -6,6 +6,7 @@ killSignal: SIGTERM # default: SIGINT
 debug: false # default: false
 prefix: name # default: ""
 padPrefix: true
+prefixLength: 10
 commands: # required will be run concurrently
   - command: "echo 'Hello, World!'" # required
     name: "" # optional

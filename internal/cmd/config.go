@@ -134,13 +134,14 @@ type Config struct {
 	Debug            bool       `mapstructure:"debug"`
 	Prefix           string     `mapstructure:"prefix"`
 	PadPrefix        bool       `mapstructure:"padPrefix"`
+	PrefixLength     int        `mapstructure:"prefixLength"`
 	Commands         []RunCommandConfig
 	RunBefore        RunBeforeConfig
 	RunAfter         RunAfterConfig
 }
 
 func (c Config) Validate() error {
-	if _, err := NewPrefix(c.Prefix); err != nil {
+	if _, err := NewPrefix(c.Prefix, 0); err != nil {
 		return err
 	}
 	for _, command := range c.Commands {

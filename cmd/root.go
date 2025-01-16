@@ -138,7 +138,7 @@ var rootCmd = &cobra.Command{
 			if command.Raw == nil {
 				command.Raw = &cfg.RunBefore.Raw
 			}
-			prefix, err := cmd.NewPrefix(cfg.Prefix)
+			prefix, err := cmd.NewPrefix(cfg.Prefix, cfg.PrefixLength)
 			if err != nil {
 				panic("unreachable")
 			}
@@ -159,7 +159,7 @@ var rootCmd = &cobra.Command{
 			if command.Raw == nil {
 				command.Raw = &cfg.Raw
 			}
-			prefix, err := cmd.NewPrefix(cfg.Prefix)
+			prefix, err := cmd.NewPrefix(cfg.Prefix, cfg.PrefixLength)
 			if err != nil {
 				panic("unreachable")
 			}
@@ -204,7 +204,7 @@ var rootCmd = &cobra.Command{
 			if command.Raw == nil {
 				command.Raw = &cfg.RunAfter.Raw
 			}
-			prefix, err := cmd.NewPrefix(cfg.Prefix)
+			prefix, err := cmd.NewPrefix(cfg.Prefix, cfg.PrefixLength)
 			if err != nil {
 				panic("unreachable")
 			}
@@ -252,6 +252,9 @@ func init() {
 
 	rootCmd.Flags().StringP("prefix", "p", "", "Prefix Type (values: index, name, command, pid, time, TEMPLATE)\n  template Values: {{.Name | .Index | .Command | .Pid | .Time}}")
 	viper.BindPFlag("prefix", rootCmd.Flags().Lookup("prefix"))
+
+	rootCmd.Flags().Int("prefix-length", 10, "Prefix Length")
+	viper.BindPFlag("prefixLength", rootCmd.Flags().Lookup("prefix-length"))
 
 	rootCmd.Flags().Bool("pad-prefix", false, "Pad prefix to the longest prefix")
 	viper.BindPFlag("padPrefix", rootCmd.Flags().Lookup("pad-prefix"))

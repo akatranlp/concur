@@ -38,6 +38,11 @@
       "description": "If the prefix should be padded.",
       "default": true
     },
+    "prefixLength": {
+      "type": "integer",
+      "description": "The max Length of the prefix if the prefix is command.",
+      "default": 10
+    },
     "commands": {
       "type": "array",
       "items": {

@@ -12,22 +12,24 @@ import (
 const timeFormat = "15:04:05.000"
 
 type Prefix struct {
-	template *template.Template
-	input    string
-	Index    int
-	Name     string
-	Command  string
-	Pid      int
-	Time     string
-	Padding  string
+	template         *template.Template
+	input            string
+	maxCommandLength int
+	Index            int
+	Name             string
+	Command          string
+	Pid              int
+	Time             string
+	Padding          string
 }
 
 var templateRegex = regexp.MustCompile(`\{\{.*\}\}`)
 
-func NewPrefix(input string) (p Prefix, err error) {
+func NewPrefix(input string, maxCommandLength int) (p Prefix, err error) {
+	p.maxCommandLength = maxCommandLength
 	p.input = input
 	switch input {
-	case "idx", "index", "name", "", "pid", "time":
+	case "idx", "index", "name", "", "pid", "time", "command":
 		return
 	default:
 		if !templateRegex.MatchString(input) {
@@ -62,6 +64,16 @@ func (p Prefix) Apply(seq *Sequence) string {
 		case "name":
 			if p.Name != "" {
 				prefix = p.Name
+			} else {
+				if len(p.Command) > p.maxCommandLength {
+					prefix = p.Command[:p.maxCommandLength]
+				} else {
+					prefix = p.Command
+				}
+			}
+		case "command":
+			if len(p.Command) > p.maxCommandLength {
+				prefix = p.Command[:p.maxCommandLength]
 			} else {
 				prefix = p.Command
 			}
