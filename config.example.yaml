@@ -1,14 +1,20 @@
+# yaml-language-server: $schema=config.schema.json
 raw: true # default: false
-killOthers: true # default: false
-debug: true
+killOthers: false # default: false
+killOthersOnFail: false # default: false
+debug: false # default: false
+prefixType: name # default: ""
 commands: # required will be run concurrently
   - command: "echo 'Hello, World!'" # required
     name: "" # optional
-    prefixColor: green
+    color: green
+    bold: true
+    underline: false
     raw: false # optional overrides the global raw option
-  - command: "sleep 5" # required
+  - command: "sleep 2" # required
     name: "" # optional
-    prefixColor: red
+    color: "#ff0000"
+    bold: true
     raw: false # optional overrides the global raw option
 
 runBefore: # default: [] will be run seqyentially after the commands
@@ -17,15 +23,10 @@ runBefore: # default: [] will be run seqyentially after the commands
     - command: "echo 'Before all things!'" # required
       name: "hello" # default: ""
       raw: true # default: ../raw
-      input: none # default: none; options: stdin, previous, none
-      output: stdout # default: stdout; options: stdout, next, none
 
 runAfter: # default: [] will be run seqyentially after the commands
   raw: true # default true
   commands:
     - command: "echo 'Run After everything'" # required
-      always: true # default: false
       name: "hello" # default: ""
       raw: true # default: ../raw
-      input: none # default: none; options: stdin, previous, none
-      output: stdout # default: stdout; options: stdout, next, none

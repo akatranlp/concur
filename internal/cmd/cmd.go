@@ -27,7 +27,7 @@ const (
 	PreficTypeUnknown prefixType = ""
 	PrefixIdx         prefixType = "idx"
 	PrefixPID         prefixType = "pid"
-	PrefixName        prefixType = "Name"
+	PrefixName        prefixType = "name"
 	PrefixCommand     prefixType = "command"
 )
 

@@ -61,20 +61,20 @@ const (
 
 type RunBeforeCommandConfig struct {
 	RunCommandConfig `mapstructure:",squash"`
-	Input            InputType  `mapstructure:"input"`
-	Output           OutputType `mapstructure:"output"`
+	// Input            InputType  `mapstructure:"input"`
+	// Output           OutputType `mapstructure:"output"`
 }
 
 func (c RunBeforeCommandConfig) Validate() error {
 	if err := c.RunCommandConfig.Validate(); err != nil {
 		return err
 	}
-	if err := c.Input.Validate(); err != nil {
-		return err
-	}
-	if err := c.Output.Validate(); err != nil {
-		return err
-	}
+	// if err := c.Input.Validate(); err != nil {
+	// 	return err
+	// }
+	// if err := c.Output.Validate(); err != nil {
+	// 	return err
+	// }
 	return nil
 }
 
@@ -98,20 +98,20 @@ var defaultRunBeforeConfig = RunBeforeConfig{
 
 type RunAfterCommandConfig struct {
 	RunCommandConfig `mapstructure:",squash"`
-	Input            InputType  `mapstructure:"input"`
-	Output           OutputType `mapstructure:"output"`
+	// Input            InputType  `mapstructure:"input"`
+	// Output           OutputType `mapstructure:"output"`
 }
 
 func (c RunAfterCommandConfig) Validate() error {
 	if err := c.RunCommandConfig.Validate(); err != nil {
 		return err
 	}
-	if err := c.Input.Validate(); err != nil {
-		return err
-	}
-	if err := c.Output.Validate(); err != nil {
-		return err
-	}
+	// if err := c.Input.Validate(); err != nil {
+	// 	return err
+	// }
+	// if err := c.Output.Validate(); err != nil {
+	// 	return err
+	// }
 	return nil
 }
 
