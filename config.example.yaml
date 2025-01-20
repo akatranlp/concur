@@ -4,34 +4,29 @@ killOthers: false # default: false
 killOthersOnFail: false # default: false
 killSignal: SIGTERM # default: SIGINT
 debug: false # default: false
-prefix: name # default: ""
-padPrefix: true
-prefixLength: 10
-timestampFormat: "15:04:05.000"
-timeSinceStart: true
+prefix:
+  template: name # default: ""
+  padPrefix: true
+  prefixLength: 10
+  timestampFormat: "15:04:05.000"
+  timeSinceStart: true
 commands: # required will be run concurrently
   - command: "echo 'Hello, World!'" # required
     name: "" # optional
     color: green
     bold: true
     underline: false
-    raw: false # optional overrides the global raw option
   - command: "sleep 2" # required
     name: "" # optional
     color: "#ff0000"
     bold: true
-    raw: false # optional overrides the global raw option
 
 runBefore: # default: [] will be run seqyentially after the commands
-  raw: true # default true
   commands:
     - command: "echo 'Before all things!'" # required
       name: "hello" # default: ""
-      raw: true # default: ../raw
 
 runAfter: # default: [] will be run seqyentially after the commands
-  raw: true # default true
   commands:
     - command: "echo 'Run After everything'" # required
       name: "hello" # default: ""
-      raw: true # default: ../raw
