@@ -131,6 +131,22 @@ type PrefixConfig struct {
 	TimeSinceStart  bool   `mapstructure:"timeSinceStart"`
 }
 
+type StatusConfig struct {
+	Commands []string `mapstructure:"commands"`
+}
+
+func (c StatusConfig) Validate() error {
+	if len(c.Commands) == 0 {
+		return ErrEmptyCommand
+	}
+	for _, command := range c.Commands {
+		if command == "" {
+			return ErrEmptyCommand
+		}
+	}
+	return nil
+}
+
 type Config struct {
 	Raw              bool         `mapstructure:"raw"`
 	KillOthers       bool         `mapstructure:"killOthers"`
@@ -139,6 +155,7 @@ type Config struct {
 	Debug            bool         `mapstructure:"debug"`
 	Prefix           PrefixConfig `mapstructure:"prefix"`
 	Commands         []RunCommandConfig
+	Status           *StatusConfig
 	RunBefore        RunBeforeConfig
 	RunAfter         RunAfterConfig
 }
@@ -155,6 +172,12 @@ func (c Config) Validate() error {
 	if err := c.RunAfter.Validate(); err != nil {
 		return err
 	}
+	if c.Status != nil {
+		if err := c.Status.Validate(); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
