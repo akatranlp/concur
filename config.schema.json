@@ -97,6 +97,21 @@
       "minItems": 1,
       "additionalItems": false
     },
+    "status": {
+      "type": "object",
+      "properties": {
+        "commands": {
+          "type": "array",
+          "description": "The commands to run.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false,
+      "required": ["commands"]
+    },
     "runBefore": {
       "type": "object",
       "properties": {

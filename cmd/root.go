@@ -30,6 +30,7 @@ import (
 
 	"github.com/akatranlp/concur/internal/cmd"
 	"github.com/akatranlp/concur/internal/config"
+	healthcheck "github.com/akatranlp/concur/internal/health_check"
 	"github.com/akatranlp/concur/internal/logger"
 	"github.com/akatranlp/concur/internal/prefix"
 	"github.com/spf13/cobra"
@@ -228,7 +229,12 @@ func ExecutePrefixMode(ctx context.Context, cfg *config.Config) error {
 		pref.ApplyEvenPadding()
 	}
 
-	log := logger.NewPrefixLogger(pref, os.Stdout)
+	var hc healthcheck.HealthChecker
+	if cfg.Status != nil {
+		hc = healthcheck.NewCommandHealthChecker(cfg.Status.Commands)
+	}
+
+	log := logger.NewPrefixLogger(pref, os.Stdout, true, hc)
 	msgCh := log.GetMessageChannel()
 
 	var wg sync.WaitGroup
@@ -245,6 +251,12 @@ func ExecutePrefixMode(ctx context.Context, cfg *config.Config) error {
 			errCh <- err
 		}(sh)
 	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		hc.Start(ctx)
+	}()
 
 	go log.Run()
 

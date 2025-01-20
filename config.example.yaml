@@ -21,6 +21,10 @@ commands: # required will be run concurrently
     color: "#ff0000"
     bold: true
 
+status:
+  commands:
+    - "echo 'Backend Statuscode: $(curl -o /dev/null -s -w \"%{http_code}\n\" localhost:3000)'"
+
 runBefore: # default: [] will be run seqyentially after the commands
   commands:
     - command: "echo 'Before all things!'" # required
