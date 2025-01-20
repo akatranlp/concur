@@ -1,4 +1,4 @@
-package cmd
+package config
 
 import (
 	"errors"
@@ -15,7 +15,6 @@ var (
 type RunCommandConfig struct {
 	Command     string   `mapstructure:"command"`
 	Name        string   `mapstructure:"name"`
-	Raw         *bool    `mapstructure:"raw"`
 	PrefixColor Sequence `mapstructure:",squash"`
 	CWD         string   `mapstructure:"cwd"`
 	Debug       bool     `mapstructure:"debug"`
@@ -80,7 +79,6 @@ func (c RunBeforeCommandConfig) Validate() error {
 }
 
 type RunBeforeConfig struct {
-	Raw      bool                     `mapstructure:"raw"`
 	Commands []RunBeforeCommandConfig `mapstructure:"commands"`
 }
 
@@ -113,7 +111,6 @@ func (c RunAfterCommandConfig) Validate() error {
 }
 
 type RunAfterConfig struct {
-	Raw      bool                    `mapstructure:"raw"`
 	Commands []RunAfterCommandConfig `mapstructure:"commands"`
 }
 
@@ -126,26 +123,27 @@ func (c RunAfterConfig) Validate() error {
 	return nil
 }
 
+type PrefixConfig struct {
+	Template        string `mapstructure:"template"`
+	PadPrefix       bool   `mapstructure:"padPrefix"`
+	PrefixLength    int    `mapstructure:"prefixLength"`
+	TimestampFormat string `mapstructure:"timestampFormat"`
+	TimeSinceStart  bool   `mapstructure:"timeSinceStart"`
+}
+
 type Config struct {
-	Raw              bool       `mapstructure:"raw"`
-	KillOthers       bool       `mapstructure:"killOthers"`
-	KillOthersOnFail bool       `mapstructure:"killOthersOnFail"`
-	KillSignal       KillSignal `mapstructure:"killSignal"`
-	Debug            bool       `mapstructure:"debug"`
-	Prefix           string     `mapstructure:"prefix"`
-	PadPrefix        bool       `mapstructure:"padPrefix"`
-	PrefixLength     int        `mapstructure:"prefixLength"`
-	TimestampFormat  string     `mapstructure:"timestampFormat"`
-	TimeSinceStart   bool       `mapstructure:"timeSinceStart"`
+	Raw              bool         `mapstructure:"raw"`
+	KillOthers       bool         `mapstructure:"killOthers"`
+	KillOthersOnFail bool         `mapstructure:"killOthersOnFail"`
+	KillSignal       KillSignal   `mapstructure:"killSignal"`
+	Debug            bool         `mapstructure:"debug"`
+	Prefix           PrefixConfig `mapstructure:"prefix"`
 	Commands         []RunCommandConfig
 	RunBefore        RunBeforeConfig
 	RunAfter         RunAfterConfig
 }
 
 func (c Config) Validate() error {
-	if _, err := NewPrefix(c.Prefix, 0, "", false); err != nil {
-		return err
-	}
 	for _, command := range c.Commands {
 		if err := command.Validate(); err != nil {
 			return err

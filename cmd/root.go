@@ -29,6 +29,9 @@ import (
 	"sync"
 
 	"github.com/akatranlp/concur/internal/cmd"
+	"github.com/akatranlp/concur/internal/config"
+	"github.com/akatranlp/concur/internal/logger"
+	"github.com/akatranlp/concur/internal/prefix"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -81,9 +84,9 @@ var rootCmd = &cobra.Command{
 			return viper.ReadInConfig()
 		}
 
-		runCfgs := make([]cmd.RunCommandConfig, len(args))
+		runCfgs := make([]config.RunCommandConfig, len(args))
 		for i, arg := range args {
-			runCfgs[i] = cmd.RunCommandConfig{
+			runCfgs[i] = config.RunCommandConfig{
 				Command: arg,
 			}
 		}
@@ -102,11 +105,11 @@ var rootCmd = &cobra.Command{
 				return errors.New("number of prefix colors must match number of commands")
 			}
 			for i, color := range prefixColors {
-				var c cmd.Color
+				var c config.Color
 				if err := c.Set(color); err != nil {
 					return err
 				}
-				runCfgs[i].PrefixColor = cmd.Sequence{Color: c}
+				runCfgs[i].PrefixColor = config.Sequence{Color: c}
 			}
 		}
 
@@ -118,7 +121,7 @@ var rootCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(ccmd *cobra.Command, args []string) error {
-		cfg, err := cmd.ParseConfig()
+		cfg, err := config.ParseConfig()
 		if err != nil {
 			return err
 		}
@@ -128,89 +131,31 @@ var rootCmd = &cobra.Command{
 		}
 
 		ctx := ccmd.Context()
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
 
 		if len(cfg.RunBefore.Commands) > 0 {
 			fmt.Println("\033[1m[RunBefore]\033[0m")
-		}
-		for i, command := range cfg.RunBefore.Commands {
-			if command.Raw == nil {
-				command.Raw = &cfg.RunBefore.Raw
-			}
-			prefix, err := cmd.NewPrefix(cfg.Prefix, cfg.PrefixLength, cfg.TimestampFormat, cfg.TimeSinceStart)
-			if err != nil {
-				panic("unreachable")
-			}
-			sh := cmd.NewCommand(ctx, i, prefix, cfg.KillSignal.Sys(), command.RunCommandConfig)
-			if err := sh.Run(nil); err != nil {
-				return err
+			for _, command := range cfg.RunBefore.Commands {
+				sh := cmd.NewCommand(ctx, cfg.KillSignal.Sys(), command.RunCommandConfig)
+				if err := sh.RunRaw(); err != nil {
+					return err
+				}
 			}
 		}
 
 		fmt.Println("\033[1m[Concurrently]\033[0m")
-		// Concurrently run all commands
-
-		killOthers := cfg.KillOthers
-		killOthersOnFail := cfg.KillOthersOnFail
-
-		startedCommands := make([]*cmd.Command, len(cfg.Commands))
-		for i, command := range cfg.Commands {
-			if command.Raw == nil {
-				command.Raw = &cfg.Raw
-			}
-			prefix, err := cmd.NewPrefix(cfg.Prefix, cfg.PrefixLength, cfg.TimestampFormat, cfg.TimeSinceStart)
-			if err != nil {
-				panic("unreachable")
-			}
-			sh := cmd.NewCommand(ctx, i, prefix, cfg.KillSignal.Sys(), command)
-			if err := sh.Start(); err != nil {
-				return err
-			}
-
-			startedCommands[i] = sh
-		}
-
-		if cfg.PadPrefix {
-			cmd.ApplyEvenPadding(startedCommands...)
-		}
-
-		var wg sync.WaitGroup
-		wg.Add(len(cfg.Commands))
-		errCh := make(chan error, len(cfg.Commands))
-
-		for _, sh := range startedCommands {
-			go func(cmd *cmd.Command) {
-				defer wg.Done()
-				err := cmd.Wait(nil)
-				if killOthers || (err != nil && killOthersOnFail) {
-					cancel()
-				}
-				errCh <- err
-			}(sh)
-		}
-
-		wg.Wait()
-		close(errCh)
-		for errV := range errCh {
-			err = errors.Join(err, errV)
+		if cfg.Raw {
+			err = ExecuteRawMode(ctx, cfg)
+		} else {
+			err = ExecutePrefixMode(ctx, cfg)
 		}
 
 		if len(cfg.RunAfter.Commands) > 0 {
 			fmt.Println("\033[1m[RunAfter]\033[0m")
-		}
-
-		for i, command := range cfg.RunAfter.Commands {
-			if command.Raw == nil {
-				command.Raw = &cfg.RunAfter.Raw
-			}
-			prefix, err := cmd.NewPrefix(cfg.Prefix, cfg.PrefixLength, cfg.TimestampFormat, cfg.TimeSinceStart)
-			if err != nil {
-				panic("unreachable")
-			}
-			sh := cmd.NewCommand(context.Background(), i, prefix, cfg.KillSignal.Sys(), command.RunCommandConfig)
-			if err := sh.Run(nil); err != nil {
-				return err
+			for _, command := range cfg.RunAfter.Commands {
+				sh := cmd.NewCommand(context.Background(), cfg.KillSignal.Sys(), command.RunCommandConfig)
+				if err := sh.RunRaw(); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -219,6 +164,98 @@ var rootCmd = &cobra.Command{
 		}
 		return ErrNoPrint{}
 	},
+}
+
+func ExecuteRawMode(ctx context.Context, cfg *config.Config) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	killOthers := cfg.KillOthers
+	killOthersOnFail := cfg.KillOthersOnFail
+
+	var wg sync.WaitGroup
+	wg.Add(len(cfg.Commands))
+	errCh := make(chan error, len(cfg.Commands))
+	for _, command := range cfg.Commands {
+		sh := cmd.NewCommand(ctx, cfg.KillSignal.Sys(), command)
+		go func(cmd *cmd.Command) {
+			defer wg.Done()
+			err := cmd.RunRaw()
+			if killOthers || (err != nil && killOthersOnFail) {
+				cancel()
+			}
+			errCh <- err
+		}(sh)
+	}
+
+	var err error
+	wg.Wait()
+	close(errCh)
+	for errV := range errCh {
+		err = errors.Join(err, errV)
+	}
+	return err
+}
+
+func ExecutePrefixMode(ctx context.Context, cfg *config.Config) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	killOthers := cfg.KillOthers
+	killOthersOnFail := cfg.KillOthersOnFail
+	pref, err := prefix.NewPrefix(cfg.Prefix)
+	if err != nil {
+		return err
+	}
+
+	startedCommands := make([]*cmd.Command, len(cfg.Commands))
+
+	for i, command := range cfg.Commands {
+		sh := cmd.NewCommand(ctx, cfg.KillSignal.Sys(), command)
+		pid, err := sh.StartWithPrefix()
+		if err != nil {
+			return err
+		}
+		index := pref.Add(command.Name, command.Command, pid, &command.PrefixColor)
+		if i != index {
+			return fmt.Errorf("index mismatch: %d != %d", i, index)
+		}
+
+		startedCommands[i] = sh
+	}
+
+	if cfg.Prefix.PadPrefix {
+		pref.ApplyEvenPadding()
+	}
+
+	log := logger.NewPrefixLogger(pref, os.Stdout)
+	msgCh := log.GetMessageChannel()
+
+	var wg sync.WaitGroup
+	wg.Add(len(cfg.Commands))
+	errCh := make(chan error, len(cfg.Commands))
+
+	for i, sh := range startedCommands {
+		go func(cmd *cmd.Command) {
+			defer wg.Done()
+			err := cmd.WaitWithPrefix(i, msgCh)
+			if killOthers || (err != nil && killOthersOnFail) {
+				cancel()
+			}
+			errCh <- err
+		}(sh)
+	}
+
+	go log.Run()
+
+	wg.Wait()
+	log.Close()
+	log.Wait()
+	close(errCh)
+	for errV := range errCh {
+		err = errors.Join(err, errV)
+	}
+	return err
 }
 
 type ErrNoPrint struct{}
@@ -251,19 +288,19 @@ func init() {
 	rootCmd.Flags().StringArrayVarP(&prefixColors, "prefix-colors", "c", nil, "Prefix Colors")
 
 	rootCmd.Flags().StringP("prefix", "p", "", "Prefix Type (values: index, name, command, pid, time, TEMPLATE)\n  template Values: {{.Name | .Index | .Command | .Pid | .Time}}")
-	viper.BindPFlag("prefix", rootCmd.Flags().Lookup("prefix"))
+	viper.BindPFlag("prefix.template", rootCmd.Flags().Lookup("prefix"))
 
 	rootCmd.Flags().Int("prefix-length", 10, "Prefix Length")
-	viper.BindPFlag("prefixLength", rootCmd.Flags().Lookup("prefix-length"))
+	viper.BindPFlag("prefix.prefixLength", rootCmd.Flags().Lookup("prefix-length"))
 
 	rootCmd.Flags().Bool("pad-prefix", false, "Pad prefix to the longest prefix")
-	viper.BindPFlag("padPrefix", rootCmd.Flags().Lookup("pad-prefix"))
+	viper.BindPFlag("prefix.padPrefix", rootCmd.Flags().Lookup("pad-prefix"))
 
 	rootCmd.Flags().StringP("timestamp-format", "t", "15:04:05.000", "Timestamp format in notation of Go time package")
-	viper.BindPFlag("timestampFormat", rootCmd.Flags().Lookup("timestamp-format"))
+	viper.BindPFlag("prefix.timestampFormat", rootCmd.Flags().Lookup("timestamp-format"))
 
 	rootCmd.Flags().Bool("time-since-start", false, "Show time since start")
-	viper.BindPFlag("timeSinceStart", rootCmd.Flags().Lookup("time-since-start"))
+	viper.BindPFlag("prefix.timeSinceStart", rootCmd.Flags().Lookup("time-since-start"))
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
