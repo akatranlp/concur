@@ -229,12 +229,18 @@ func ExecutePrefixMode(ctx context.Context, cfg *config.Config) error {
 		pref.ApplyEvenPadding()
 	}
 
-	var hc healthcheck.HealthChecker
-	if cfg.Status != nil {
-		hc = healthcheck.NewCommandHealthChecker(cfg.Status.Commands)
+	var hcs []healthcheck.HealthChecker
+	if cfg.Status.Enabled {
+		for _, check := range cfg.Status.Checks {
+			hc, err := healthcheck.HealthCheckFactory(check)
+			if err != nil {
+				return err
+			}
+			hcs = append(hcs, hc)
+		}
 	}
 
-	log := logger.NewPrefixLogger(pref, os.Stdout, true, hc)
+	log := logger.NewPrefixLogger(pref, os.Stdout, true, hcs)
 	msgCh := log.GetMessageChannel()
 
 	var wg sync.WaitGroup
@@ -252,11 +258,13 @@ func ExecutePrefixMode(ctx context.Context, cfg *config.Config) error {
 		}(sh)
 	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		hc.Start(ctx)
-	}()
+	for _, hc := range hcs {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			hc.Start(ctx)
+		}()
+	}
 
 	go log.Run()
 

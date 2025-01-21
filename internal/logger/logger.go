@@ -19,17 +19,17 @@ type PrefixLogger struct {
 	prefix *prefix.Prefix
 	out    *os.File
 
-	healthChecker       hc.HealthChecker
+	healthCheckers      []hc.HealthChecker
 	healthCheckInterval time.Duration
 	done                chan struct{}
 	msgCh               chan Message
 }
 
-func NewPrefixLogger(p *prefix.Prefix, output *os.File, healthCheckEnabled bool, healthChecker hc.HealthChecker) *PrefixLogger {
+func NewPrefixLogger(p *prefix.Prefix, output *os.File, healthCheckEnabled bool, healthCheckers []hc.HealthChecker) *PrefixLogger {
 	return &PrefixLogger{
 		prefix:              p,
 		out:                 output,
-		healthChecker:       healthChecker,
+		healthCheckers:      healthCheckers,
 		healthCheckInterval: 1,
 		msgCh:               make(chan Message, 100),
 		done:                make(chan struct{}),
@@ -52,14 +52,23 @@ func (l *PrefixLogger) Run() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 		select {
 		case <-ticker.C:
-			if l.healthChecker == nil {
+			if len(l.healthCheckers) == 0 {
 				continue
 			}
-			message, oldRows := l.healthChecker.GetHealthCheckMessage(ctx)
-			if oldRows > 0 {
-				l.out.WriteString(fmt.Sprintf("\033[%dA\033[0J", oldRows))
+
+			healthMessages := make([]string, 0)
+			oldHelthMessageRows := 0
+
+			for _, hc := range l.healthCheckers {
+				message, oldRows := hc.GetHealthCheckMessage(ctx)
+				healthMessages = append(healthMessages, message...)
+				oldHelthMessageRows += oldRows
 			}
-			l.RenderHealthCheck(message)
+
+			if oldHelthMessageRows > 0 {
+				l.out.WriteString(fmt.Sprintf("\033[%dA\033[0J", oldHelthMessageRows))
+			}
+			l.RenderHealthCheck(healthMessages)
 		case msg, ok := <-l.msgCh:
 			if !ok {
 				cancel()
@@ -68,15 +77,22 @@ func (l *PrefixLogger) Run() {
 
 			prefix := l.prefix.Render(msg.ID, true)
 
-			if l.healthChecker != nil {
-				message, oldRows := l.healthChecker.GetHealthCheckMessage(ctx)
-				if oldRows > 0 {
-					l.out.WriteString(fmt.Sprintf("\033[%dA\033[0J", oldRows))
+			if len(l.healthCheckers) > 0 {
+				healthMessages := make([]string, 0)
+				oldHelthMessageRows := 0
+
+				for _, hc := range l.healthCheckers {
+					message, oldRows := hc.GetHealthCheckMessage(ctx)
+					healthMessages = append(healthMessages, message...)
+					oldHelthMessageRows += oldRows
+				}
+				if oldHelthMessageRows > 0 {
+					l.out.WriteString(fmt.Sprintf("\033[%dA\033[0J", oldHelthMessageRows))
 				}
 
 				l.out.WriteString(prefix)
 				l.out.WriteString(msg.Text)
-				l.RenderHealthCheck(message)
+				l.RenderHealthCheck(healthMessages)
 
 			} else {
 				l.out.WriteString(prefix)

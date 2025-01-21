@@ -22,8 +22,15 @@ commands: # required will be run concurrently
     bold: true
 
 status:
-  commands:
-    - "echo 'Backend Statuscode: $(curl -o /dev/null -s -w \"%{http_code}\n\" localhost:3000)'"
+  printInterval: 2s
+  checks:
+    - type: command
+      command: "echo 'Hello, World!'" # required
+      interval: 2s
+    - type: http
+      url: http://localhost:3000/health
+      interval: 2s
+      template: '{{.URL}} -> {{.StatusCode}} Status: {{index .Body "status"}}'
 
 runBefore: # default: [] will be run seqyentially after the commands
   commands:

@@ -3,6 +3,8 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/url"
+	"time"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
@@ -61,20 +63,13 @@ const (
 
 type RunBeforeCommandConfig struct {
 	RunCommandConfig `mapstructure:",squash"`
-	// Input            InputType  `mapstructure:"input"`
-	// Output           OutputType `mapstructure:"output"`
 }
 
 func (c RunBeforeCommandConfig) Validate() error {
 	if err := c.RunCommandConfig.Validate(); err != nil {
 		return err
 	}
-	// if err := c.Input.Validate(); err != nil {
-	// 	return err
-	// }
-	// if err := c.Output.Validate(); err != nil {
-	// 	return err
-	// }
+
 	return nil
 }
 
@@ -93,20 +88,12 @@ func (c RunBeforeConfig) Validate() error {
 
 type RunAfterCommandConfig struct {
 	RunCommandConfig `mapstructure:",squash"`
-	// Input            InputType  `mapstructure:"input"`
-	// Output           OutputType `mapstructure:"output"`
 }
 
 func (c RunAfterCommandConfig) Validate() error {
 	if err := c.RunCommandConfig.Validate(); err != nil {
 		return err
 	}
-	// if err := c.Input.Validate(); err != nil {
-	// 	return err
-	// }
-	// if err := c.Output.Validate(); err != nil {
-	// 	return err
-	// }
 	return nil
 }
 
@@ -131,17 +118,61 @@ type PrefixConfig struct {
 	TimeSinceStart  bool   `mapstructure:"timeSinceStart"`
 }
 
+type CheckType string
+
+const (
+	CheckTypeCommand CheckType = "command"
+	CheckTypeHTTP    CheckType = "http"
+)
+
+type StatusCheckConfig struct {
+	Type     CheckType     `mapstructure:"type"`
+	Interval time.Duration `mapstructure:"interval"`
+	Command  string        `mapstructure:"command"`
+	URL      string        `mapstructure:"url"`
+	Template string        `mapstructure:"template"`
+}
+
+func (c StatusCheckConfig) Validate() error {
+	switch c.Type {
+	case CheckTypeCommand:
+		if c.Command == "" {
+			return ErrEmptyCommand
+		}
+	case CheckTypeHTTP:
+		if c.URL == "" {
+			return errors.New("empty URL")
+		} else if _, err := url.Parse(c.URL); err != nil {
+			return err
+		} else if c.Template == "" {
+			return errors.New("empty template")
+		} else if c.Interval <= 100*time.Millisecond {
+			return errors.New("interval too small")
+		}
+	default:
+		return errors.New("invalid check type")
+	}
+	return nil
+}
+
 type StatusConfig struct {
-	Commands []string `mapstructure:"commands"`
+	Enabled       bool                `mapstructure:"enabled"`
+	PrintInterval time.Duration       `mapstructure:"printInterval"`
+	Checks        []StatusCheckConfig `mapstructure:"checks"`
 }
 
 func (c StatusConfig) Validate() error {
-	if len(c.Commands) == 0 {
-		return ErrEmptyCommand
+	if !c.Enabled {
+		return nil
 	}
-	for _, command := range c.Commands {
-		if command == "" {
-			return ErrEmptyCommand
+	if len(c.Checks) == 0 {
+		return ErrEmptyCommand
+	} else if c.PrintInterval <= 100*time.Millisecond {
+		return errors.New("print interval too small")
+	}
+	for _, check := range c.Checks {
+		if err := check.Validate(); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -155,7 +186,7 @@ type Config struct {
 	Debug            bool         `mapstructure:"debug"`
 	Prefix           PrefixConfig `mapstructure:"prefix"`
 	Commands         []RunCommandConfig
-	Status           *StatusConfig
+	Status           StatusConfig
 	RunBefore        RunBeforeConfig
 	RunAfter         RunAfterConfig
 }
@@ -172,10 +203,8 @@ func (c Config) Validate() error {
 	if err := c.RunAfter.Validate(); err != nil {
 		return err
 	}
-	if c.Status != nil {
-		if err := c.Status.Validate(); err != nil {
-			return err
-		}
+	if err := c.Status.Validate(); err != nil {
+		return err
 	}
 
 	return nil
@@ -192,12 +221,19 @@ func (c Config) PrintDebug() {
 }
 
 func ParseConfig() (*Config, error) {
-	viper.SetDefault("runBefore.raw", true)
-	viper.SetDefault("runAfter.raw", true)
+	// viper.SetDefault("runBefore.raw", true)
+	// viper.SetDefault("runAfter.raw", true)
+	viper.SetDefault("status.enabled", false)
+	viper.SetDefault("status.printInterval", 2*time.Second)
 
 	var cfg Config
 	if err := viper.Unmarshal(&cfg,
-		viper.DecodeHook(mapstructure.TextUnmarshallerHookFunc()),
+		viper.DecodeHook(
+			mapstructure.ComposeDecodeHookFunc(
+				mapstructure.StringToTimeDurationHookFunc(),
+				mapstructure.TextUnmarshallerHookFunc(),
+			),
+		),
 	); err != nil {
 		return nil, err
 	}
