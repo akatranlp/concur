@@ -100,17 +100,52 @@
     "status": {
       "type": "object",
       "properties": {
-        "commands": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether to show the status.",
+          "default": false
+        },
+        "printInterval": {
+          "type": "string",
+          "description": "The interval to print the status at.",
+          "default": "1s"
+        },
+        "checks": {
           "type": "array",
-          "description": "The commands to run.",
+          "description": "The checks to run.",
           "items": {
-            "type": "string"
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "description": "The type of check to run.",
+                "enum": ["http", "command"]
+              },
+              "interval": {
+                "type": "string",
+                "description": "The interval to run the check at.",
+                "default": "2s"
+              },
+              "command": {
+                "type": "string",
+                "description": "The command to run."
+              },
+              "url": {
+                "type": "string",
+                "description": "The url to check."
+              },
+              "template": {
+                "type": "string",
+                "description": "The template to use for the check."
+              }
+            },
+            "additionalProperties": false,
+            "required": ["type"]
           },
           "minItems": 1
         }
       },
-      "additionalProperties": false,
-      "required": ["commands"]
+      "additionalProperties": false
     },
     "runBefore": {
       "type": "object",
