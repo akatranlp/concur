@@ -23,19 +23,27 @@ type HTTPHealthChecker struct {
 }
 
 type HTTPHealthCheckData struct {
-	URL        *url.URL
+	URL        string
 	StatusCode int
-	Body       map[string]interface{}
+	Error      string
+	Body       string
 }
 
 var bodyRegex = regexp.MustCompile(`{{.*\.Body.*}}`)
+var tmplFnMap = template.FuncMap{
+	"jsonParse": func(body string) map[string]interface{} {
+		b := make(map[string]interface{})
+		_ = json.Unmarshal([]byte(body), &b)
+		return b
+	},
+}
 
 func NewHTTPHealthChecker(u, t string, interval time.Duration) (*HTTPHealthChecker, error) {
 	url, err := url.Parse(u)
 	if err != nil {
 		return nil, err
 	}
-	template, err := template.New("http").Parse(t)
+	template, err := template.New("http").Funcs(tmplFnMap).Parse(t)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +86,7 @@ func (c *HTTPHealthChecker) Start(ctx context.Context) {
 	}
 }
 
-func (c *HTTPHealthChecker) runCommand(ctx context.Context) error {
+func (c *HTTPHealthChecker) runCommand(ctx context.Context) {
 	ctx, cancel := context.WithTimeout(ctx, c.interval/2)
 	defer cancel()
 
@@ -87,38 +95,43 @@ func (c *HTTPHealthChecker) runCommand(ctx context.Context) error {
 		panic("unreachable")
 	}
 
-	var messages []string
+	data := &HTTPHealthCheckData{
+		URL:        c.url.String(),
+		Error:      "",
+		Body:       "",
+		StatusCode: -1,
+	}
+
+	defer func() {
+		var messages []string
+		var buf bytes.Buffer
+		if err := c.template.Execute(&buf, data); err != nil {
+			panic(err)
+		}
+
+		scanner := bufio.NewScanner(&buf)
+		for scanner.Scan() {
+			text := scanner.Text()
+			messages = append(messages, text)
+		}
+
+		c.messages = messages
+	}()
+
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		c.messages = []string{err.Error()}
-		return err
+		data.Error = err.Error()
+		return
 	}
+	data.StatusCode = res.StatusCode
 
 	defer res.Body.Close()
 
-	var body map[string]interface{}
-	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
-		c.messages = []string{err.Error()}
-		return err
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		data.Error = err.Error()
+		return
 	}
-
-	data := HTTPHealthCheckData{
-		URL:        c.url,
-		StatusCode: res.StatusCode,
-		Body:       body,
-	}
-	var buf bytes.Buffer
-	if err := c.template.Execute(&buf, data); err != nil {
-		c.messages = []string{err.Error()}
-		return err
-	}
-
-	scanner := bufio.NewScanner(&buf)
-	for scanner.Scan() {
-		text := scanner.Text()
-		messages = append(messages, text)
-	}
-
-	c.messages = messages
-	return scanner.Err()
+	data.Body = string(body)
+	return
 }
