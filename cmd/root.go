@@ -266,7 +266,7 @@ func ExecutePrefixMode(ctx context.Context, cfg *config.Config) error {
 		}()
 	}
 
-	go log.Run()
+	go log.Run(ctx)
 
 	wg.Wait()
 	log.Close()
