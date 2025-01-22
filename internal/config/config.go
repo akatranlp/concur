@@ -158,6 +158,8 @@ func (c StatusCheckConfig) Validate() error {
 type StatusConfig struct {
 	Enabled       bool                `mapstructure:"enabled"`
 	PrintInterval time.Duration       `mapstructure:"printInterval"`
+	Sequence      Sequence            `mapstructure:",squash"`
+	Text          string              `mapstructure:"text"`
 	Checks        []StatusCheckConfig `mapstructure:"checks"`
 }
 
@@ -224,6 +226,9 @@ func ParseConfig() (*Config, error) {
 	// viper.SetDefault("runBefore.raw", true)
 	// viper.SetDefault("runAfter.raw", true)
 	viper.SetDefault("status.enabled", false)
+	viper.SetDefault("status.text", "HEALTH")
+	viper.SetDefault("status.color", "red")
+	viper.SetDefault("status.bold", true)
 	viper.SetDefault("status.printInterval", 2*time.Second)
 
 	var cfg Config

@@ -240,7 +240,7 @@ func ExecutePrefixMode(ctx context.Context, cfg *config.Config) error {
 		}
 	}
 
-	log := logger.NewPrefixLogger(pref, os.Stdout, true, hcs)
+	log := logger.NewPrefixLogger(pref, os.Stdout, hcs, cfg.Status)
 	msgCh := log.GetMessageChannel()
 
 	var wg sync.WaitGroup
