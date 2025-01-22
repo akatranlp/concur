@@ -51,15 +51,22 @@ func (l *PrefixLogger) Close() {
 	close(l.msgCh)
 }
 
-func (l *PrefixLogger) Run() {
+func (l *PrefixLogger) Run(ctx context.Context) {
 	defer close(l.done)
 	ticker := time.NewTicker(l.healthCheckInterval * time.Second)
+
+	var done bool
+
+	go func() {
+		<-ctx.Done()
+		done = true
+	}()
 
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 		select {
 		case <-ticker.C:
-			if len(l.healthCheckers) == 0 {
+			if done || len(l.healthCheckers) == 0 {
 				continue
 			}
 
@@ -84,7 +91,7 @@ func (l *PrefixLogger) Run() {
 
 			prefix := l.prefix.Render(msg.ID, true)
 
-			if len(l.healthCheckers) > 0 {
+			if !done && len(l.healthCheckers) > 0 {
 				healthMessages := make([]string, 0)
 				oldHelthMessageRows := 0
 
