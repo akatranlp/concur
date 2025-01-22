@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/akatranlp/concur/internal/config"
 	hc "github.com/akatranlp/concur/internal/health_check"
 	"github.com/akatranlp/concur/internal/prefix"
 )
@@ -21,16 +22,22 @@ type PrefixLogger struct {
 
 	healthCheckers      []hc.HealthChecker
 	healthCheckInterval time.Duration
+	healthCheckerPrefix string
 	done                chan struct{}
 	msgCh               chan Message
 }
 
-func NewPrefixLogger(p *prefix.Prefix, output *os.File, healthCheckEnabled bool, healthCheckers []hc.HealthChecker) *PrefixLogger {
+func NewPrefixLogger(p *prefix.Prefix, output *os.File, healthCheckers []hc.HealthChecker, cfg config.StatusConfig) *PrefixLogger {
+	var healthCheckerPrefix string
+	if cfg.Enabled {
+		healthCheckerPrefix = cfg.Sequence.Apply("["+cfg.Text+"]") + " "
+	}
 	return &PrefixLogger{
 		prefix:              p,
 		out:                 output,
 		healthCheckers:      healthCheckers,
 		healthCheckInterval: 1,
+		healthCheckerPrefix: healthCheckerPrefix,
 		msgCh:               make(chan Message, 100),
 		done:                make(chan struct{}),
 	}
@@ -105,7 +112,7 @@ func (l *PrefixLogger) Run() {
 
 func (l *PrefixLogger) RenderHealthCheck(rows []string) {
 	for _, message := range rows {
-		l.out.WriteString(fmt.Sprintf("\033[31;1m[HEALTH]\033[0m %s\033[0m\n", message))
+		l.out.WriteString(fmt.Sprintf("%s%s\033[0m\n", l.healthCheckerPrefix, message))
 	}
 }
 
