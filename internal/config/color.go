@@ -15,14 +15,14 @@ var colorMap = map[string]string{
 	"magenta":   "35",
 	"cyan":      "36",
 	"white":     "37",
-	"HiBlack":   "90",
-	"HiRed":     "91",
-	"HiGreen":   "92",
-	"HiYellow":  "93",
-	"HiBlue":    "94",
-	"HiMagenta": "95",
-	"HiCyan":    "96",
-	"HiWhite":   "97",
+	"hiblack":   "90",
+	"hired":     "91",
+	"higreen":   "92",
+	"hiyellow":  "93",
+	"hiblue":    "94",
+	"himagenta": "95",
+	"hicyan":    "96",
+	"hiwhite":   "97",
 }
 
 type Color struct {
