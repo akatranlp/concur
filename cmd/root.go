@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/akatranlp/concur/internal/cmd"
 	"github.com/akatranlp/concur/internal/config"
@@ -292,6 +293,8 @@ func ExecutePrefixMode(ctx context.Context, cfg *config.Config) error {
 
 	go log.Run(ctx)
 
+	go killAfterTimeout(ctx, startedCommands)
+
 	wg.Wait()
 	log.Close()
 	log.Wait()
@@ -300,6 +303,14 @@ func ExecutePrefixMode(ctx context.Context, cfg *config.Config) error {
 		err = errors.Join(err, errV)
 	}
 	return err
+}
+
+func killAfterTimeout(ctx context.Context, commands []*cmd.Command) {
+	<-ctx.Done()
+	<-time.After(5 * time.Second)
+	for _, cmd := range commands {
+		cmd.Kill()
+	}
 }
 
 type ErrNoPrint struct{}
