@@ -45,6 +45,10 @@ func NewCommand(ctx context.Context, killSignal syscall.Signal, cfg config.RunCo
 	return &Command{cfg: cfg, cmd: cmd}
 }
 
+func (c *Command) Kill() error {
+	return c.cmd.Process.Kill()
+}
+
 func (c *Command) StartWithPrefix() (pid int, err error) {
 	r, w, err := os.Pipe()
 	if err != nil {
