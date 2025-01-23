@@ -1,3 +1,4 @@
 concur
 tmp
 .concur.yaml
+dist/
