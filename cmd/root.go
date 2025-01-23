@@ -189,8 +189,32 @@ func ExecuteRawMode(ctx context.Context, cfg *config.Config) error {
 		}(sh)
 	}
 
+	var hcs []healthcheck.HealthChecker
+	if cfg.Status.Enabled {
+		for _, check := range cfg.Status.Checks {
+			hc, err := healthcheck.HealthCheckFactory(check)
+			if err != nil {
+				return err
+			}
+			hcs = append(hcs, hc)
+		}
+	}
+
+	log := logger.NewRawLogger(hcs, cfg.Status)
+
+	for _, hc := range hcs {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			hc.Start(ctx)
+		}()
+	}
+
+	go log.Run(ctx)
+
 	var err error
 	wg.Wait()
+	log.Wait()
 	close(errCh)
 	for errV := range errCh {
 		err = errors.Join(err, errV)
