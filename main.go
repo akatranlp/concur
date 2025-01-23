@@ -29,9 +29,11 @@ import (
 	"github.com/akatranlp/concur/cmd"
 )
 
+var version string = "v0.0.0"
+
 func main() {
 	ctx := context.Background()
 	ctx, cancel := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
-	cmd.ExecuteContext(ctx)
+	cmd.ExecuteContext(ctx, version)
 }

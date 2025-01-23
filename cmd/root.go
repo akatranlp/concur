@@ -321,7 +321,8 @@ func (ErrNoPrint) Error() string {
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func ExecuteContext(ctx context.Context) {
+func ExecuteContext(ctx context.Context, version string) {
+	rootCmd.Version = version
 	err := rootCmd.ExecuteContext(ctx)
 	if err != nil {
 		if !errors.Is(err, ErrNoPrint{}) {
